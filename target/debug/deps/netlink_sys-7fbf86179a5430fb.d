@@ -1,0 +1,11 @@
+/mnt/d/projects/mesh-ai/mesh-ai-node/target/debug/deps/netlink_sys-7fbf86179a5430fb.d: /home/ashwin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/netlink-sys-0.8.7/src/lib.rs /home/ashwin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/netlink-sys-0.8.7/src/constants.rs /home/ashwin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/netlink-sys-0.8.7/src/socket.rs /home/ashwin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/netlink-sys-0.8.7/src/addr.rs /home/ashwin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/netlink-sys-0.8.7/src/async_socket.rs /home/ashwin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/netlink-sys-0.8.7/src/async_socket_ext.rs /home/ashwin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/netlink-sys-0.8.7/src/tokio.rs
+
+/mnt/d/projects/mesh-ai/mesh-ai-node/target/debug/deps/libnetlink_sys-7fbf86179a5430fb.rmeta: /home/ashwin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/netlink-sys-0.8.7/src/lib.rs /home/ashwin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/netlink-sys-0.8.7/src/constants.rs /home/ashwin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/netlink-sys-0.8.7/src/socket.rs /home/ashwin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/netlink-sys-0.8.7/src/addr.rs /home/ashwin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/netlink-sys-0.8.7/src/async_socket.rs /home/ashwin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/netlink-sys-0.8.7/src/async_socket_ext.rs /home/ashwin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/netlink-sys-0.8.7/src/tokio.rs
+
+/home/ashwin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/netlink-sys-0.8.7/src/lib.rs:
+/home/ashwin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/netlink-sys-0.8.7/src/constants.rs:
+/home/ashwin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/netlink-sys-0.8.7/src/socket.rs:
+/home/ashwin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/netlink-sys-0.8.7/src/addr.rs:
+/home/ashwin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/netlink-sys-0.8.7/src/async_socket.rs:
+/home/ashwin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/netlink-sys-0.8.7/src/async_socket_ext.rs:
+/home/ashwin/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/netlink-sys-0.8.7/src/tokio.rs:
