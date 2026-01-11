@@ -1,8 +1,19 @@
-use std::{error::Error, time::Duration};
-
 use futures::prelude::*;
-use libp2p::{Multiaddr, noise, ping, swarm::SwarmEvent, tcp, yamux};
+use libp2p::{
+    Multiaddr, StreamProtocol, noise, ping,
+    request_response::{self, ProtocolSupport},
+    swarm::{NetworkBehaviour, SwarmEvent},
+    tcp, yamux,
+};
+use mesh_ai_node::{PromptRequest, PromptResponse};
+use std::{error::Error, time::Duration};
 use tracing_subscriber::EnvFilter;
+
+#[derive(NetworkBehaviour)]
+struct MyBehaviour {
+    ping: ping::Behaviour,
+    request_response: request_response::cbor::Behaviour<PromptRequest, PromptResponse>,
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
@@ -17,29 +28,60 @@ async fn main() -> Result<(), Box<dyn Error>> {
             noise::Config::new,
             yamux::Config::default,
         )?
-        .with_behaviour(|_| ping::Behaviour::default())?
-        .with_swarm_config(|cfg| cfg.with_idle_connection_timeout(Duration::from_secs(u64::MAX))) // Allows us to observe pings indefinitely.
+        .with_behaviour(|_| MyBehaviour {
+            ping: ping::Behaviour::default(),
+            request_response: request_response::cbor::Behaviour::new(
+                [(StreamProtocol::new("/mesh-ai/1.0.0"), ProtocolSupport::Full)],
+                request_response::Config::default(),
+            ),
+        })?
+        .with_swarm_config(|cfg| cfg.with_idle_connection_timeout(Duration::from_secs(u64::MAX)))
         .build();
 
-    // Tell the swarm to listen on all interfaces and a random, OS-assigned
-    // port.
-    swarm.listen_on("/ip4/0.0.0.0/tcp/0".parse()?)?;
-
     // Dial the peer identified by the multi-address given as the second
-    // command-line argument, if any.
-    if let Some(addr) = std::env::args().nth(1) {
-        let remote: Multiaddr = addr.parse()?;
-        swarm.dial(remote)?;
-        println!("Dialed {addr}")
-    }
+    // command-line argument.
+    let target_addr: Multiaddr = std::env::args()
+        .nth(1)
+        .ok_or("Expected multiaddr as argument")?
+        .parse()?;
+
+    swarm.dial(target_addr.clone())?;
+    println!("Dialed {target_addr}");
+
+    let mut prompt_sent = false;
 
     loop {
         match swarm.select_next_some().await {
-            SwarmEvent::NewListenAddr { address, .. } => println!("Listening on {address:?}"),
-            SwarmEvent::Behaviour(event) => println!("{event:?}"),
+            SwarmEvent::ConnectionEstablished { peer_id, .. } => {
+                println!("Connected to {peer_id}");
+                if !prompt_sent {
+                    let prompt = "What is the capital of France?".to_string();
+                    println!("Sending prompt: {prompt}");
+                    swarm
+                        .behaviour_mut()
+                        .request_response
+                        .send_request(&peer_id, PromptRequest { prompt });
+                    prompt_sent = true;
+                }
+            }
+            SwarmEvent::Behaviour(MyBehaviourEvent::RequestResponse(
+                request_response::Event::Message {
+                    peer,
+                    message: request_response::Message::Response { response, .. },
+                    ..
+                },
+            )) => {
+                println!("Received response from {peer}: {}", response.response);
+                return Ok(());
+            }
+            SwarmEvent::Behaviour(MyBehaviourEvent::Ping(event)) => {
+                println!("Ping event: {event:?}");
+            }
+            SwarmEvent::OutgoingConnectionError { error, .. } => {
+                eprintln!("Connection error: {error}");
+                return Err(error.into());
+            }
             _ => {}
         }
     }
 }
-//Q:
-// whats swarm should see
