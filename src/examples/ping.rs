@@ -55,7 +55,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             SwarmEvent::ConnectionEstablished { peer_id, .. } => {
                 println!("Connected to {peer_id}");
                 if !prompt_sent {
-                    let prompt = "What is the capital of France?".to_string();
+                    let prompt = "whats 1 + 1".to_string();
                     println!("Sending prompt: {prompt}");
                     swarm
                         .behaviour_mut()

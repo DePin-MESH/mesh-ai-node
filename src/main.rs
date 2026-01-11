@@ -85,7 +85,7 @@ async fn call_ollama(prompt: String) -> Result<String, Box<dyn Error>> {
     let res = client
         .post("http://localhost:11434/api/generate")
         .json(&serde_json::json!({
-            "model": "deepseek-r1:1.5b",
+            "model": "deepseek-coder:1.3b",
             "prompt": prompt,
             "stream": false
         }))
@@ -102,3 +102,6 @@ async fn call_ollama(prompt: String) -> Result<String, Box<dyn Error>> {
         .unwrap_or("No response")
         .to_string())
 }
+
+//Q:
+//how the swarm make sures that the peers identify each other one thing is its in the same private network so i think
