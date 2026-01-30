@@ -1,7 +1,7 @@
 use clap::Parser;
 use futures::prelude::*;
 use libp2p::{
-    StreamProtocol, identify,
+    StreamProtocol, dcutr, identify,
     multiaddr::{Multiaddr, Protocol},
     noise, ping, relay,
     request_response::{self, ProtocolSupport},
@@ -27,6 +27,7 @@ struct MyBehaviour {
     request_response: request_response::cbor::Behaviour<PromptRequest, PromptResponse>,
     relay: relay::client::Behaviour,
     identify: identify::Behaviour,
+    dcutr: dcutr::Behaviour,
 }
 
 #[tokio::main]
@@ -56,11 +57,15 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 "/mesh-ai/1.0.0".to_string(),
                 key.public(),
             )),
+            dcutr: dcutr::Behaviour::new(key.public().to_peer_id()),
         })?
         .with_swarm_config(|cfg| cfg.with_idle_connection_timeout(Duration::from_secs(u64::MAX)))
         .build();
 
     println!("Local PeerID: {}", swarm.local_peer_id());
+
+    // Always listen on a direct TCP port for DCUTR hole-punching
+    swarm.listen_on("/ip4/0.0.0.0/tcp/0".parse()?)?;
 
     let relay_addr_opt = opt.relay_address.clone();
     let mut listening_on_relay = false;
@@ -68,16 +73,19 @@ async fn main() -> Result<(), Box<dyn Error>> {
     if let Some(ref relay_addr) = relay_addr_opt {
         println!("Connecting to relay at {relay_addr}");
         swarm.dial(relay_addr.clone())?;
-    } else {
-        swarm.listen_on("/ip4/0.0.0.0/tcp/0".parse()?)?;
     }
 
     println!("Node started. Waiting for connections...");
 
     loop {
         match swarm.select_next_some().await {
-            SwarmEvent::ConnectionEstablished { peer_id, .. } => {
-                println!("Connection established with {peer_id}");
+            SwarmEvent::ConnectionEstablished {
+                peer_id, endpoint, ..
+            } => {
+                println!(
+                    "✅ Connection established with {peer_id} via {}",
+                    endpoint.get_remote_address()
+                );
                 // If we have a relay address and haven't started listening yet
                 if let Some(ref relay_addr) = relay_addr_opt {
                     if !listening_on_relay {
@@ -135,6 +143,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
             }
             SwarmEvent::Behaviour(MyBehaviourEvent::Relay(event)) => {
                 println!("Relay event: {event:?}");
+            }
+            SwarmEvent::Behaviour(MyBehaviourEvent::Dcutr(event)) => {
+                println!("🔄 DCUTR event: {event:?}");
             }
             _ => {}
         }
