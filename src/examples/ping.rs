@@ -1,6 +1,6 @@
 use futures::prelude::*;
 use libp2p::{
-    Multiaddr, PeerId, StreamProtocol, identify,
+    Multiaddr, PeerId, StreamProtocol, dcutr, identify,
     multiaddr::Protocol,
     noise, ping, relay,
     request_response::{self, ProtocolSupport},
@@ -17,6 +17,7 @@ struct MyBehaviour {
     request_response: request_response::cbor::Behaviour<PromptRequest, PromptResponse>,
     relay: relay::client::Behaviour,
     identify: identify::Behaviour,
+    dcutr: dcutr::Behaviour,
 }
 
 #[tokio::main]
@@ -44,6 +45,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 "/mesh-ai/1.0.0".to_string(),
                 key.public(),
             )),
+            dcutr: dcutr::Behaviour::new(key.public().to_peer_id()),
         })?
         .with_swarm_config(|cfg| cfg.with_idle_connection_timeout(Duration::from_secs(u64::MAX)))
         .build();
@@ -70,6 +72,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     println!("Target peer ID: {target_peer_id}");
 
+    // Listen on a direct TCP port for DCUTR hole-punching
+    swarm.listen_on("/ip4/0.0.0.0/tcp/0".parse()?)?;
+
     swarm.dial(target_addr.clone())?;
     println!("Dialed {target_addr}");
 
@@ -77,8 +82,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     loop {
         match swarm.select_next_some().await {
-            SwarmEvent::ConnectionEstablished { peer_id, .. } => {
-                println!("Connected to {peer_id}");
+            SwarmEvent::ConnectionEstablished {
+                peer_id, endpoint, ..
+            } => {
+                println!(
+                    "✅ Connection established with {peer_id} via {}",
+                    endpoint.get_remote_address()
+                );
                 // Only send request when connected to the TARGET peer, not the relay
                 if peer_id == target_peer_id && !prompt_sent {
                     let prompt = "whats 1 + 1".to_string();
@@ -102,6 +112,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
             }
             SwarmEvent::Behaviour(MyBehaviourEvent::Ping(event)) => {
                 println!("Ping event: {event:?}");
+            }
+            SwarmEvent::Behaviour(MyBehaviourEvent::Dcutr(event)) => {
+                println!("🔄 DCUTR event: {event:?}");
             }
             SwarmEvent::OutgoingConnectionError { error, .. } => {
                 eprintln!("Connection error: {error}");
