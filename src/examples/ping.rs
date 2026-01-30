@@ -1,6 +1,8 @@
 use futures::prelude::*;
 use libp2p::{
-    Multiaddr, StreamProtocol, noise, ping,
+    Multiaddr, PeerId, StreamProtocol, identify,
+    multiaddr::Protocol,
+    noise, ping, relay,
     request_response::{self, ProtocolSupport},
     swarm::{NetworkBehaviour, SwarmEvent},
     tcp, yamux,
@@ -13,6 +15,8 @@ use tracing_subscriber::EnvFilter;
 struct MyBehaviour {
     ping: ping::Behaviour,
     request_response: request_response::cbor::Behaviour<PromptRequest, PromptResponse>,
+    relay: relay::client::Behaviour,
+    identify: identify::Behaviour,
 }
 
 #[tokio::main]
@@ -28,12 +32,18 @@ async fn main() -> Result<(), Box<dyn Error>> {
             noise::Config::new,
             yamux::Config::default,
         )?
-        .with_behaviour(|_| MyBehaviour {
+        .with_relay_client(noise::Config::new, yamux::Config::default)?
+        .with_behaviour(|key, relay_behaviour| MyBehaviour {
             ping: ping::Behaviour::default(),
             request_response: request_response::cbor::Behaviour::new(
                 [(StreamProtocol::new("/mesh-ai/1.0.0"), ProtocolSupport::Full)],
                 request_response::Config::default(),
             ),
+            relay: relay_behaviour,
+            identify: identify::Behaviour::new(identify::Config::new(
+                "/mesh-ai/1.0.0".to_string(),
+                key.public(),
+            )),
         })?
         .with_swarm_config(|cfg| cfg.with_idle_connection_timeout(Duration::from_secs(u64::MAX)))
         .build();
@@ -45,6 +55,21 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .ok_or("Expected multiaddr as argument")?
         .parse()?;
 
+    // Extract the target peer ID (the last P2p component in the address)
+    let target_peer_id: PeerId = target_addr
+        .iter()
+        .filter_map(|p| {
+            if let Protocol::P2p(id) = p {
+                Some(id)
+            } else {
+                None
+            }
+        })
+        .last()
+        .ok_or("No peer ID in target address")?;
+
+    println!("Target peer ID: {target_peer_id}");
+
     swarm.dial(target_addr.clone())?;
     println!("Dialed {target_addr}");
 
@@ -54,9 +79,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
         match swarm.select_next_some().await {
             SwarmEvent::ConnectionEstablished { peer_id, .. } => {
                 println!("Connected to {peer_id}");
-                if !prompt_sent {
+                // Only send request when connected to the TARGET peer, not the relay
+                if peer_id == target_peer_id && !prompt_sent {
                     let prompt = "whats 1 + 1".to_string();
-                    println!("Sending prompt: {prompt}");
+                    println!("Sending prompt to {peer_id}: {prompt}");
                     swarm
                         .behaviour_mut()
                         .request_response
