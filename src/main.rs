@@ -6,7 +6,7 @@ use libp2p::{
     noise, ping, relay,
     request_response::{self, ProtocolSupport},
     swarm::{NetworkBehaviour, SwarmEvent},
-    tcp, yamux,
+    tcp, upnp, yamux,
 };
 use mesh_ai_node::{PromptRequest, PromptResponse};
 use std::{error::Error, time::Duration};
@@ -28,6 +28,7 @@ struct MyBehaviour {
     relay: relay::client::Behaviour,
     identify: identify::Behaviour,
     dcutr: dcutr::Behaviour,
+    upnp: upnp::tokio::Behaviour,
 }
 
 #[tokio::main]
@@ -58,6 +59,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
                 key.public(),
             )),
             dcutr: dcutr::Behaviour::new(key.public().to_peer_id()),
+            upnp: upnp::tokio::Behaviour::default(),
         })?
         .with_swarm_config(|cfg| cfg.with_idle_connection_timeout(Duration::from_secs(u64::MAX)))
         .build();
@@ -146,6 +148,9 @@ async fn main() -> Result<(), Box<dyn Error>> {
             }
             SwarmEvent::Behaviour(MyBehaviourEvent::Dcutr(event)) => {
                 println!("🔄 DCUTR event: {event:?}");
+            }
+            SwarmEvent::Behaviour(MyBehaviourEvent::Upnp(event)) => {
+                println!("🔌 UPnP event: {event:?}");
             }
             _ => {}
         }
